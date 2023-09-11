@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: row;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .left-column {
+            width: 20%;
+            background-color: #f0f0f0;
+            overflow-y: scroll;
+        }
+
+         /* Hover effect for left text */
+        .left-column li:hover {
+            background-color: #ddd;
+            cursor: pointer;
+        }
+
+        .right-column {
+            flex: 1;
+            background-color: #ffffff;
+            overflow-y: scroll;
+        }
+
+        .column-title {
+            font-weight: bold;
+            padding: 10px;
+            background-color: #333;
+            color: #fff;
+        }
+
+        .content {
+            padding: 10px;
+        }
+
+    </style>
+    <title>Giám sát hành vi người thực hành</title>
+</head>
+<body>
+    <script>
+        const eventSource = new EventSource('/sse-endpoint'); // Replace with your server endpoint
+
+        eventSource.onmessage = function(event) {
+            console.log(event.data)
+            // do reload
+            location.reload();
+        };
+
+        eventSource.onerror = function(event) {
+            // Handle errors
+            console.error("EventSource failed:", event);
+        };
+    </script>
+    <div class="container">
+        <div class="left-column">
+            <div class="column-title">Tên session</div>
+            <div class="content">
+                <ul id="sessionList">
+                    <!-- Các hàng sẽ được tạo bằng JavaScript -->
+                </ul>
+            </div>
+        </div>
+        <div class="right-column">
+            <div class="column-title">Nội dung</div>
+            <div class="content" id="contentRight">
+                <!-- Nội dung dài sẽ được tạo bằng JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        
+        const sessionList = document.getElementById("sessionList");
+        const contentRight = document.getElementById("contentRight");
+        let intervalId = null; // Store the interval ID
+
+        async function fetchSessionData() {
+            try {
+                const response = await fetch('/getallsession'); // Assuming the API is available at this endpoint
+                const data = await response.json();
+                
+                // Nạp dữ liệu cho danh sách các hàng trong cột bên trái
+                data.forEach((session, index) => {
+                    const listItem = document.createElement("li");
+                    listItem.textContent = session;
+                    listItem.addEventListener("click", () => {
+                        // Xử lý sự kiện khi người dùng nhấp vào một hàng
+                        getSessionContent(session);
+                    });
+                    sessionList.appendChild(listItem);
+                });
+            } catch (error) {
+                console.error('Error fetching session data:', error);
+            }
+        }
+
+        // Function to fetch session content from the API
+        async function getSessionContent(session) {
+            try {
+                clearInterval(intervalId);
+                const response = await fetch(`/getsessioncontent?sessionDataItem=${session}`);
+                const content = await response.json();
+                displayContent(content);
+                // Set a new timer to call getSessionContent every 3 seconds
+                intervalId = setInterval(() => {
+                    console.log('recall');
+                    getSessionContent(session);
+                }, 5000);
+            } catch (error) {
+                console.error('Error fetching session content:', error);
+            }
+        }
+
+        // Hàm hiển thị dữ liệu nội dung trong cột bên phải
+        function displayContent(content) {
+            contentRight.innerHTML = `<pre>${content}</pre>`;
+        }
+
+        // Hàm sinh dữ liệu văn bản ngẫu nhiên
+        function generateRandomText() {
+            const randomText = Math.random().toString(36).substring(2, 15);
+            return randomText;
+        }
+
+        // Hàm hiển thị dữ liệu ngẫu nhiên trong cột bên phải
+        function displayRandomText() {
+            const randomText = generateRandomText();
+            contentRight.innerHTML = `<p>${randomText}</p>`;
+        }
+
+        window.addEventListener('load', fetchSessionData);
+    </script>
+</body>
+</html>
